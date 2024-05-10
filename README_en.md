@@ -1,16 +1,12 @@
 # **Not Only Log**
-一个宏，内部基于OSLog库中Logger.
 
-Xcode15后，debug控制台提供了非常有用的日志输入，其中包括了可直接定位到代码行的功能。
+A swift macro that produces oslog with custom info.
 
-遗憾的是，我们app自定义的日志库无法实现同样的定位代码行。一直到......有了这个库:
-
-随着Xcode15来的Swift宏让上边的设想能够实现，下边是个例子：
+> After upgrading Xcode 15, OSLog's `Logger` can provide good console log display. But our custom log doesn't support that, this library makes it work in a lightweight way.
 
 **What's the difference**
 ![img](https://gitee.com/poos/NoLogMacro/raw/main/img/compare.gif)
 
-可以看到，常规方法的log无法定位到正确的代码行。通过本库提供的方法可以完美的以宏的方式支持，非常轻量级。
 
 ## Using
 
