@@ -8,14 +8,20 @@ Xcode15后，debug控制台提供了非常有用的日志输入，其中包括�
 随着Xcode15来的Swift宏让上边的设想能够实现，下边是个例子：
 
 **What's the difference**
+> github的markdown，gif播放一次后会停止播放，可以点击图片到原图，可重复播放
 ![img](https://gitee.com/poos/NoLogMacro/raw/main/img/compare.gif)
 
 可以看到，常规方法的log无法定位到正确的代码行。通过本库提供的方法可以完美的以宏的方式支持，非常轻量级。
 
 ## Using
 
+- 右键添加 Package，通过链接 `https://github.com/poos/NoLogMacro` 添加，同时选择 Lib 和 Client
+- `import OSLog` 和 `import NoLogMacro`，初始化 `NoLogger.callback`（可选）
+- 使用`#noLog()` 代替 `Logger().log()`
+
 gif:
 
+> github的markdown，gif播放一次后会停止播放，可以点击图片到原图，可重复播放
 ![img](https://gitee.com/poos/NoLogMacro/raw/main/img/use.gif)
 
 step1:
@@ -33,6 +39,10 @@ step2:
 Just like:
 
 ```
+//import
+import OSLog
+import NoLogMacro
+
 // set once
 NoLogger.callback = { (type: OSLogType, message: String, attrs: Dictionary<String, Any>?) in
     print("simple type: \(type) message: \(message) dic: \(String(describing: attrs))")
@@ -68,4 +78,5 @@ Logger().log(level: .fault, "fault")
 ## TODO List
 
 - support `Logger(subsystem: <#T##String#>, category: <#T##String#>)`
+- brew iOS 14, using print support
 - using Swift Macro writing this lib
