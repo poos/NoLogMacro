@@ -74,8 +74,8 @@ private func expand(
     let category = node.arguments.first(where: { $0.label?.text == "category" })?.expression
     let loggerInit: String
     if subsystem != nil || category != nil {
-        let subText = subsystem.map { "\($0)" } ?? "\"\""
-        let catText = category.map { "\($0)" } ?? "\"\""
+        let subText = subsystem.map { "\($0)" } ?? "NoLogDefaults.subsystem"
+        let catText = category.map { "\($0)" } ?? "NoLogDefaults.category"
         loggerInit = "Logger(subsystem: \(subText), category: \(catText))"
     } else {
         loggerInit = "Logger()"

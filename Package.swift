@@ -25,7 +25,10 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-syntax.git", from: "602.0.0"),
+        // Version range instead of `from:` because swift-syntax uses 600/601/602
+        // as separate major versions: this lets Xcode 16 (Swift 6.0) resolve to
+        // 600.x while Xcode 26 (Swift 6.2) resolves to 602.x.
+        .package(url: "https://github.com/apple/swift-syntax.git", "600.0.0"..<"603.0.0"),
     ],
     targets: [
         // Macro implementation that performs the source transformation of a macro.

@@ -12,7 +12,7 @@ Xcode 15 起，控制台里的 OSLog 日志可以直接定位到代码行。但�
 
 - `#noLog` 系列宏，展开后保留 OSLog 的原生代码定位能力
 - `OSLogMessage` 专属插值全部可用：`\(value, privacy: .private)`、`\(d, format: .fixed(precision: 2))` 等（宏会自动生成一份 `String` 版本供你的回调使用）
-- `subsystem` / `category` 支持，可在 Console 中按模块过滤
+- `subsystem` / `category` 支持，可在 Console 中按模块过滤（只传其一时，另一侧用 `NoLogDefaults` 兜底：subsystem 默认取 `Bundle.main.bundleIdentifier`）
 - 运行时级别过滤（`NoLogger.minLevel`），低于阈值的条目零成本（回调闭包不会被求值）
 - 多 sink 架构：`NoLogSink` 协议 + `NoLogClosureSink`，可同时挂多个目标（文件 / 网络 / 第三方）
 - 线程安全（`NSLock`），符合 Swift 6 严格并发

@@ -12,7 +12,7 @@ Comparison (GitHub's Markdown stops a gif after one play; click the image to rep
 
 - `#noLog` family of macros, expanding while preserving OSLog's click-to-source ability
 - All `OSLogMessage` interpolations work: `\(value, privacy: .private)`, `\(d, format: .fixed(precision: 2))`, etc. (the macro generates a plain `String` copy for your callback automatically)
-- `subsystem` / `category` support, so you can filter in the Console
+- `subsystem` / `category` support, so you can filter in the Console (if you pass only one, the other falls back to `NoLogDefaults`: subsystem defaults to `Bundle.main.bundleIdentifier`)
 - Runtime level gating (`NoLogger.minLevel`); entries below the threshold cost nothing (the callback closure is never even evaluated)
 - Multi-sink architecture: the `NoLogSink` protocol + `NoLogClosureSink`, so you can attach multiple destinations (file / network / third-party)
 - Thread-safe (`NSLock`) and Swift 6 strict-concurrency ready

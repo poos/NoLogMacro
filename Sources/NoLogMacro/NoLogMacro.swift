@@ -34,6 +34,14 @@ public struct NoLogEntry: Sendable {
     }
 }
 
+/// Fallback values used when `#noLog` is given only `subsystem:` or only
+/// `category:` (a `Logger` requires both). The macro refers to these names
+/// directly, so no extra import is needed at the call site.
+public enum NoLogDefaults {
+    public static let subsystem: String = Bundle.main.bundleIdentifier ?? "NoLogMacro"
+    public static let category: String = "default"
+}
+
 /// A destination for log entries. Implement this to ship logs to a file, a
 /// remote service, a third-party analytics SDK, etc.
 public protocol NoLogSink: Sendable {
@@ -60,8 +68,21 @@ public final class NoLogger: @unchecked Sendable {
     private let lock = NSLock()
     nonisolated(unsafe) private var _sinks: [any NoLogSink] = []
     nonisolated(unsafe) private var _sinkKeys: [String] = []
+    nonisolated(unsafe) private var _minLevel: OSLogType?
+
     /// Entries below this level are dropped. `nil` means "no filtering".
-    public var minLevel: OSLogType? = nil
+    public var minLevel: OSLogType? {
+        get {
+            lock.lock()
+            defer { lock.unlock() }
+            return _minLevel
+        }
+        set {
+            lock.lock()
+            defer { lock.unlock() }
+            _minLevel = newValue
+        }
+    }
 
     private init() {}
 
@@ -105,7 +126,9 @@ public final class NoLogger: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         guard !_sinks.isEmpty else { return false }
-        guard let min = minLevel else { return true }
+        // Read `_minLevel` directly: the public `minLevel` getter takes the same
+        // non-recursive lock, so calling it here would deadlock.
+        guard let min = _minLevel else { return true }
         return rank(level) >= rank(min)
     }
 

@@ -41,7 +41,7 @@ final class MyMacroTests: XCTestCase {
             Logger()
                 .noLog(level: .`default`, "token: \\(token)", attrs: nil, category: nil)
                 .log(level: .`default`, "token: \\(token, privacy: .private)")
-            Logger(subsystem: "", category: "net")
+            Logger(subsystem: NoLogDefaults.subsystem, category: "net")
                 .noLog(level: .info, "info", attrs: nil, category: "net")
                 .log(level: .info, "info")
             Logger()
@@ -50,7 +50,7 @@ final class MyMacroTests: XCTestCase {
             Logger()
                 .noLog(level: .error, "error", attrs: nil, category: nil)
                 .log(level: .error, "error")
-            Logger(subsystem: "com.example", category: "")
+            Logger(subsystem: "com.example", category: NoLogDefaults.category)
                 .noLog(level: .fault, "fault", attrs: nil, category: nil)
                 .log(level: .fault, "fault")
             """,
