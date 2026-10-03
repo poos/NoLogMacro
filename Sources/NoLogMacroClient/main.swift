@@ -1,22 +1,30 @@
 import NoLogMacro
 import OSLog
 
-Logger().log(level: .default, "default")
-#noLog("default")
-#noLog("default", attrs: ["a": 1])
+// Setup a sink once (replaces the old `NoLogger.callback`).
+NoLogger.shared.addSink(
+    NoLogClosureSink { entry in
+        let loc = "\(entry.file):\(entry.line)"
+        let cat = entry.category.map { " @\($0)" } ?? ""
+        let attrs = entry.attrs.map { " \($0)" } ?? ""
+        print("[\(entry.level)]\(cat) \(entry.message)\(attrs) — \(loc)")
+    },
+    forKey: "console"
+)
 
-Logger().log(level: .info, "info")
-#noLogInfo("info")
-#noLogInfo("info", attrs: ["a": 2])
+// Optional runtime level gate: drop anything below .debug.
+NoLogger.shared.minLevel = .debug
 
-Logger().log(level: .debug, "debug")
-#noLogDebug("debug")
-#noLogDebug("debug", attrs: ["a": 3])
+// Plain usage keeps Xcode's click-to-source ability.
+#noLog("hello world")
+#noLog("user tapped", attrs: ["view": "home"])
 
-Logger().log(level: .error, "error")
-#noLogError("error")
-#noLogError("error", attrs: ["a": 4])
+// OSLog privacy / format interpolations now work.
+let token = "abc123"
+#noLog("token: \(token, privacy: .private)")
 
-Logger().log(level: .fault, "fault")
-#noLogFault("fault")
-#noLogFault("fault", attrs: ["a": 5])
+// Leveled variants, with subsystem / category support.
+#noLogInfo("fetched profile", category: "network")
+#noLogDebug("cache size: \(42)")
+#noLogError("request failed", attrs: ["code": 500], subsystem: "com.example.app", category: "network")
+#noLogFault("crash imminent")

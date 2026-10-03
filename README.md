@@ -1,82 +1,94 @@
 # **Not Only Log**
-一个宏，内部基于OSLog库中Logger.
 
-Xcode15后，debug控制台提供了非常有用的日志输入，其中包括了可直接定位到代码行的功能。
+一个基于 OSLog 的 Swift 宏：用 `#noLog` 代替 `Logger().log(...)`，**既保留了 Xcode 控制台点击跳转到源码行的能力，又能把同一条日志转发给你自己的处理逻辑**（自定义存储、上报、采样等）。
 
-遗憾的是，我们app自定义的日志库无法实现同样的定位代码行。一直到......有了这个库:
+Xcode 15 起，控制台里的 OSLog 日志可以直接定位到代码行。但自己写的日志库做不到这一点——直到有了这个宏：它在调用处原地展开成真正的 `Logger().log(...)`，所以定位能力天然保留。
 
-随着Xcode15来的Swift宏让上边的设想能够实现，下边是个例子：
+对比效果（GitHub 的 Markdown 下 gif 播一次会停，可点开原图重复看）：
 
-**What's the difference**
-> github的markdown，gif播放一次后会停止播放，可以点击图片到原图，可重复播放
 ![img](https://gitee.com/poos/NoLogMacro/raw/main/img/compare.gif)
 
-可以看到，常规方法的log无法定位到正确的代码行。通过本库提供的方法可以完美的以宏的方式支持，非常轻量级。
+## 功能
 
-## Using
+- `#noLog` 系列宏，展开后保留 OSLog 的原生代码定位能力
+- `OSLogMessage` 专属插值全部可用：`\(value, privacy: .private)`、`\(d, format: .fixed(precision: 2))` 等（宏会自动生成一份 `String` 版本供你的回调使用）
+- `subsystem` / `category` 支持，可在 Console 中按模块过滤
+- 运行时级别过滤（`NoLogger.minLevel`），低于阈值的条目零成本（回调闭包不会被求值）
+- 多 sink 架构：`NoLogSink` 协议 + `NoLogClosureSink`，可同时挂多个目标（文件 / 网络 / 第三方）
+- 线程安全（`NSLock`），符合 Swift 6 严格并发
 
-- 右键添加 Package，通过链接 `https://github.com/poos/NoLogMacro` 添加，同时选择 Lib 和 Client
-- `import OSLog` 和 `import NoLogMacro`，初始化 `NoLogger.callback`（可选）
-- 使用`#noLog()` 代替 `Logger().log()`
+## 安装
 
-gif:
+通过 SPM 添加 `https://github.com/poos/NoLogMacro`，勾选 `NoLogMacro` 库（以及可选的 `NoLogMacroClient` 示例）。最低支持 macOS 11 / iOS 14 / watchOS 7 / tvOS 14 / visionOS 1。
 
-> github的markdown，gif播放一次后会停止播放，可以点击图片到原图，可重复播放
-![img](https://gitee.com/poos/NoLogMacro/raw/main/img/use.gif)
+## 使用
 
-step1:
-
-![img](https://gitee.com/poos/NoLogMacro/raw/main/img/example1.png)
-
-![img](https://gitee.com/poos/NoLogMacro/raw/main/img/example2.png)
-
-step2:
-
-![img](https://gitee.com/poos/NoLogMacro/raw/main/img/example3.png)
-
-### Code
-
-Just like:
-
-```
-//import
+```swift
 import OSLog
 import NoLogMacro
 
-// set once
-NoLogger.callback = { (type: OSLogType, message: String, attrs: Dictionary<String, Any>?) in
-    print("simple type: \(type) message: \(message) dic: \(String(describing: attrs))")
-}
+// 一次性注册一个 sink（取代旧版的 NoLogger.callback）
+NoLogger.shared.addSink(
+    NoLogClosureSink { entry in
+        print("[\(entry.level)] \(entry.message) \(entry.attrs?.description ?? "")")
+    },
+    forKey: "console"
+)
 
+// 可选：运行时级别门控，低于该级别的日志不进入任何 sink
+NoLogger.shared.minLevel = .debug
 
-// all log can send to `NoLogger.callback`
-// **can be located to a line**
-
-// same with `Logger().log(level: .default, "default")`
+// 与 Logger().log(level: .default, "msg") 等价，且能定位到这一行
 #noLog("message")
-// and more custom info
-#noLogError("error", attrs: ["code": 404])
 
-// others
-Logger().log(level: .info, "info")
+// 携带额外结构化字段
+#noLogError("request failed", attrs: ["code": 500])
+
+// OSLog 隐私 / 格式插值现在可用
+let token = "abc123"
+#noLog("token: \(token, privacy: .private)")
+
+// 带 subsystem / category，便于在 Console 过滤
+#noLogInfo("fetched profile", category: "network")
+
+// 指定级别的便捷宏
 #noLogInfo("info")
-#noLogInfo("info", attrs: ["a": 2])
-
-Logger().log(level: .debug, "debug")
-#noLogDebug("debug")
 #noLogDebug("debug", attrs: ["a": 3])
-
-Logger().log(level: .error, "error")
-#noLogError("error")
-#noLogError("error", attrs: ["a": 4])
-
-Logger().log(level: .fault, "fault")
+#noLogError("error", attrs: ["a": 4], subsystem: "com.example.app", category: "network")
 #noLogFault("fault")
-#noLogFault("fault", attrs: ["a": 5])
 ```
 
-## TODO List
+## 宏速查
 
-- support `Logger(subsystem: <#T##String#>, category: <#T##String#>)`
-- brew iOS 14, using print support
-- using Swift Macro writing this lib
+| 宏 | 等价 level |
+|---|---|
+| `#noLog("msg")` | `.default` |
+| `#noLog(level: .info, "msg")` | 任意 |
+| `#noLogInfo("msg")` | `.info` |
+| `#noLogDebug("msg")` | `.debug` |
+| `#noLogError("msg")` | `.error` |
+| `#noLogFault("msg")` | `.fault` |
+
+所有宏都接受可选参数 `attrs:`、`subsystem:`、`category:`。
+
+## 从旧版迁移
+
+旧版 `NoLogger.callback` 已标注 `deprecated`，仍可继续工作，但建议改为：
+
+```swift
+// 旧
+NoLogger.callback = { type, message, attrs in ... }
+
+// 新
+NoLogger.shared.addSink(NoLogClosureSink { entry in ... }, forKey: "console")
+```
+
+注意回调参数里的 `attrs` 类型由 `Dictionary<String, Any>?` 变为 `[String: any Sendable]?`。
+
+## TODO
+
+- [x] 支持 `Logger(subsystem:category:)`（通过 `subsystem:` / `category:` 参数）
+- [x] OSLog 隐私 / 格式插值（如 `privacy: .private`）
+- [x] 多 sink / 结构化 attrs
+- [x] Swift 6 严格并发、线程安全
+- [ ] 编译期按 build flag 裁剪 debug/info（需在不破坏代码定位的前提下设计，待定）

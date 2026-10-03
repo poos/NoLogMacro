@@ -1,67 +1,94 @@
 # **Not Only Log**
 
-A swift macro that produces oslog with custom info.
+A Swift macro built on top of OSLog. Use `#noLog` instead of `Logger().log(...)` — you keep **Xcode's click-to-source-location ability** *and* get the same log forwarded to your own handling (custom storage, upload, sampling, …).
 
-> After upgrading Xcode 15, OSLog's `Logger` can provide good console log display. But our custom log doesn't support that, this library makes it work in a lightweight way.
+Since Xcode 15, OSLog entries in the console can jump straight to the line of code. Custom log libraries can't do that — until this macro: it expands in place into a real `Logger().log(...)`, so the location capability is preserved natively.
 
-**What's the difference**
+Comparison (GitHub's Markdown stops a gif after one play; click the image to replay):
+
 ![img](https://gitee.com/poos/NoLogMacro/raw/main/img/compare.gif)
 
+## Features
 
-## Using
+- `#noLog` family of macros, expanding while preserving OSLog's click-to-source ability
+- All `OSLogMessage` interpolations work: `\(value, privacy: .private)`, `\(d, format: .fixed(precision: 2))`, etc. (the macro generates a plain `String` copy for your callback automatically)
+- `subsystem` / `category` support, so you can filter in the Console
+- Runtime level gating (`NoLogger.minLevel`); entries below the threshold cost nothing (the callback closure is never even evaluated)
+- Multi-sink architecture: the `NoLogSink` protocol + `NoLogClosureSink`, so you can attach multiple destinations (file / network / third-party)
+- Thread-safe (`NSLock`) and Swift 6 strict-concurrency ready
 
-gif:
+## Installation
 
-![img](https://gitee.com/poos/NoLogMacro/raw/main/img/use.gif)
+Add `https://github.com/poos/NoLogMacro` via SPM, selecting the `NoLogMacro` library (and optionally the `NoLogMacroClient` example). Minimum deployment: macOS 11 / iOS 14 / watchOS 7 / tvOS 14 / visionOS 1.
 
-step1:
+## Usage
 
-![img](https://gitee.com/poos/NoLogMacro/raw/main/img/example1.png)
+```swift
+import OSLog
+import NoLogMacro
 
-![img](https://gitee.com/poos/NoLogMacro/raw/main/img/example2.png)
+// Register a sink once (replaces the old `NoLogger.callback`).
+NoLogger.shared.addSink(
+    NoLogClosureSink { entry in
+        print("[\(entry.level)] \(entry.message) \(entry.attrs?.description ?? "")")
+    },
+    forKey: "console"
+)
 
-step2:
+// Optional: runtime level gate; logs below this level never reach any sink.
+NoLogger.shared.minLevel = .debug
 
-![img](https://gitee.com/poos/NoLogMacro/raw/main/img/example3.png)
-
-### Code
-
-Just like:
-
-```
-// set once
-NoLogger.callback = { (type: OSLogType, message: String, attrs: Dictionary<String, Any>?) in
-    print("simple type: \(type) message: \(message) dic: \(String(describing: attrs))")
-}
-
-
-// all log can send to `NoLogger.callback`
-// **can be located to a line**
-
-// same with `Logger().log(level: .default, "default")`
+// Equivalent to Logger().log(level: .default, "msg"), and locatable to this line.
 #noLog("message")
-// and more custom info
-#noLogError("error", attrs: ["code": 404])
 
-// others
-Logger().log(level: .info, "info")
+// With extra structured fields.
+#noLogError("request failed", attrs: ["code": 500])
+
+// OSLog privacy / format interpolations now work.
+let token = "abc123"
+#noLog("token: \(token, privacy: .private)")
+
+// With subsystem / category, handy for Console filtering.
+#noLogInfo("fetched profile", category: "network")
+
+// Level-specific convenience macros.
 #noLogInfo("info")
-#noLogInfo("info", attrs: ["a": 2])
-
-Logger().log(level: .debug, "debug")
-#noLogDebug("debug")
 #noLogDebug("debug", attrs: ["a": 3])
-
-Logger().log(level: .error, "error")
-#noLogError("error")
-#noLogError("error", attrs: ["a": 4])
-
-Logger().log(level: .fault, "fault")
+#noLogError("error", attrs: ["a": 4], subsystem: "com.example.app", category: "network")
 #noLogFault("fault")
-#noLogFault("fault", attrs: ["a": 5])
 ```
 
-## TODO List
+## Macro reference
 
-- support `Logger(subsystem: <#T##String#>, category: <#T##String#>)`
-- using Swift Macro writing this lib
+| Macro | Equivalent level |
+|---|---|
+| `#noLog("msg")` | `.default` |
+| `#noLog(level: .info, "msg")` | any |
+| `#noLogInfo("msg")` | `.info` |
+| `#noLogDebug("msg")` | `.debug` |
+| `#noLogError("msg")` | `.error` |
+| `#noLogFault("msg")` | `.fault` |
+
+All macros accept the optional parameters `attrs:`, `subsystem:`, `category:`.
+
+## Migrating from older versions
+
+The old `NoLogger.callback` is now `deprecated` but still works; prefer:
+
+```swift
+// Old
+NoLogger.callback = { type, message, attrs in ... }
+
+// New
+NoLogger.shared.addSink(NoLogClosureSink { entry in ... }, forKey: "console")
+```
+
+Note the callback's `attrs` type changed from `Dictionary<String, Any>?` to `[String: any Sendable]?`.
+
+## TODO
+
+- [x] Support `Logger(subsystem:category:)` (via `subsystem:` / `category:` arguments)
+- [x] OSLog privacy / format interpolations (e.g. `privacy: .private`)
+- [x] Multiple sinks / structured `attrs`
+- [x] Swift 6 strict concurrency & thread safety
+- [ ] Compile-time stripping of debug/info based on build flags (design pending so it does not break code location)
